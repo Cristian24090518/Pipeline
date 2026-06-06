@@ -1,0 +1,69 @@
+name: Pipeline de Entrega Continua (CI/CD/CO)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  calidad_y_pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar Codigo Fuente
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Entorno Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Instalar Dependencias y Validar Sintaxis
+        run: |
+          npm ci
+          npm run lint
+
+      - name: Ejecutar Pruebas Unitarias
+        run: npm run test:cov
+
+      - name: Analisis Esatico con SonarQube
+        uses: sonarsource/sonarqube-scan-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  construccion_y_despliegue:
+    needs: calidad_y_pruebas 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar Codigo Fuente
+        uses: actions/checkout@v4
+
+      - name: Autenticacion en Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Construir y Publicar Imagen Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/mi-app:latest
+
+      - name: Desplegar Actualizacion en Producción
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_SERVER_IP }}
+          username: ${{ secrets.PROD_SERVER_USER }}
+          key: ${{ secrets.PROD_SERVER_KEY }}
+          script: |
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/mi-app:latest
+            docker stop mi-app-contenedor || true
+            docker rm mi-app-contenedor || true
+            docker run -d --name mi-app-contenedor -p 80:3000 ${{ secrets.DOCKERHUB_USERNAME }}/mi-app:latest
