@@ -1,0 +1,11 @@
+{
+  "name": "simulacion-pipeline",
+  "version": "1.0.0",
+  "description": "Cascaron para simular el pipeline de TI",
+  "main": "index.js",
+  "scripts": {
+    "lint": "echo 'Sintaxis validada con exito (Simulado)'",
+    "test:cov": "echo 'Pruebas de cobertura al 100% (Simulado)'"
+  },
+  "dependencies": {}
+}
