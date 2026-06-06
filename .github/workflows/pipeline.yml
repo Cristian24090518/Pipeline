@@ -22,8 +22,7 @@ jobs:
           node-version: 18
 
       - name: Instalar Dependencias y Validar Sintaxis
-        run: |
-          npm ci
+        run: npm install
           npm run lint
 
       - name: Ejecutar Pruebas Unitarias
